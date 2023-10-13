@@ -1,7 +1,7 @@
 import { World } from "./ecs.js";
 
-const COMPONENT_COUNT = 200;
-const INITIAL_ENTITY_COUNT = 10000;
+const COMPONENT_COUNT = 400;
+const INITIAL_ENTITY_COUNT = 20000;
 const SYSTEM_COUNT = 200;
 
 const world = new World(registry => {
@@ -118,9 +118,7 @@ for (let i = 0; i < 1000; i++) {
         bitflags.push(world.calculateComponentBitflags(newQuery));
 
         let iter = world.cachedQuery(world.calculateComponentBitflags(newQuery));
-        while (!iter.next().done) {
-
-        }
+        while (!iter.next().done);
     }
 
     start();
@@ -149,31 +147,35 @@ for (let i = 0; i < 1000; i++) {
 
 // COMPARE DENSE AND SPARSE QUERY //
 
-// cache the query
-const queryingFor = "component30";
-const bitflags = world.calculateComponentBitflags([queryingFor]);
-world.cachedQuery(bitflags);
+{
+    // cache the query
+    const queryingFor = "component" + Math.floor(COMPONENT_COUNT * 0.20);
+    const bitflags = world.calculateComponentBitflags([queryingFor]);
 
-console.log(`# of ${queryingFor}: ${world.world[queryingFor].reduce((acc, val) => {
-    return acc + (val === null ? 0 : 1);
-}, 0)
-    }`);
+    let iter = world.cachedQuery(bitflags);
+    while (!iter.next().done);
 
-start();
-for (let i = 0; i < 100; i++) {
-    for (let index of world.cachedQuery(bitflags)) {
-        world.world[queryingFor][index].x += 1;
+    console.log(`# of ${queryingFor}: ${world.world[queryingFor].reduce((acc, val) => {
+        return acc + (val === null ? 0 : 1);
+    }, 0)
+        }`);
+
+    start();
+    for (let i = 0; i < 100; i++) {
+        for (let index of world.cachedQuery(bitflags)) {
+            world.world[queryingFor][index].x += 1;
+        }
     }
-}
-console.log(`Single pass of cached: ${end(1 / 100)}`);
+    console.log(`Single pass of cached: ${end(1 / 100)}`);
 
-start();
-for (let i = 0; i < 100; i++) {
-    for (let index of world.query(bitflags)) {
-        world.world[queryingFor][index].x += 1;
+    start();
+    for (let i = 0; i < 100; i++) {
+        for (let index of world.query(bitflags)) {
+            world.world[queryingFor][index].x += 1;
+        }
     }
+    console.log(`Single pass of normal: ${end(1 / 100)}`);
 }
-console.log(`Single pass of normal: ${end(1 / 100)}`);
 
 // insert after query caches are established
 {
