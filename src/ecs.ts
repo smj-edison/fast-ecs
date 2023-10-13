@@ -1,4 +1,4 @@
-import { GenerationManager, IndexAndGeneration } from "../generation-manager.js";
+import { GenerationManager, IndexAndGeneration } from "./generation-manager.js";
 
 
 type Registry = {
