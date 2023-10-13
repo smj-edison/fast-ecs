@@ -27,3 +27,7 @@ var query = world.calculateComponentBitflags(["component62"]);
 console.log("query", query);
 
 var iter = world.query(query);
+
+for (let index of iter) {
+
+}

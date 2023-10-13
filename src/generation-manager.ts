@@ -11,8 +11,8 @@ class GenerationManager {
     generations: Array<number | null | boolean>;
 
     constructor(componentCount: number) {
-        // 52 bits of mantissa for f64
-        this.componentNumsNeeded = Math.ceil(componentCount / 52);
+        // 32 bits is maximum binary operator precision
+        this.componentNumsNeeded = Math.ceil(componentCount / 32);
         this.alignment = Math.max(this.componentNumsNeeded, 2) + 1;
         this.nextOpen = null;
 
@@ -28,7 +28,7 @@ class GenerationManager {
         this.generations = [];
     }
 
-    #generation(index: number): number {
+    generation(index: number): number {
         return this.generations[index * this.alignment] as number;
     }
 
@@ -49,7 +49,7 @@ class GenerationManager {
             // sanity check
             if (!this.isTaken(this.nextOpen)) {
                 const index = this.nextOpen;
-                const generation = this.#generation(index) as number;
+                const generation = this.generation(index) as number;
 
                 this.nextOpen = this.#pointerToNext(index);
 
@@ -93,13 +93,24 @@ class GenerationManager {
         return false;
     }
 
+    getBitflags(id: IndexAndGeneration): number[] | undefined {
+        if (!this.check(id)) return undefined;
+
+        const { index } = id;
+
+        return this.generations.slice(
+            index * this.alignment + 1,
+            index * this.alignment + 1 + this.componentNumsNeeded
+        ) as number[];
+    }
+
     check(id: IndexAndGeneration): boolean {
         const {
             index,
             generation
         } = id;
 
-        return this.#generation(index) === generation && this.isTaken(index);
+        return this.generation(index) === generation && this.isTaken(index);
     }
 
     remove(id: IndexAndGeneration) {

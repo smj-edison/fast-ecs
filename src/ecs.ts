@@ -25,11 +25,31 @@ class ComponentRegistry {
     }
 }
 
+// 24 bits for generation
+const GENERATION_MASK = 0xFFFFFF << 28;
+// 28 for index
+const INDEX_MASK = 0xFFFFFFF;
+
+// 24 bits for generation, 28 for index
+function idToCompactId(index: number, generation: number): number {
+    return ((generation << 28) & GENERATION_MASK) | (index & INDEX_MASK);
+}
+
+function compactIdToId(id: number): IndexAndGeneration {
+    return {
+        index: id & INDEX_MASK,
+        generation: (id & GENERATION_MASK) >> 28
+    };
+}
+
 class World {
     gens: GenerationManager;
     registry: Registry;
-    world: { [key: string]: any[] };
+    world: { [component: string]: any[] };
     componentNames: string[] = [];
+    queryCache: {
+        [componentBitmap: string]: Set<number>
+    } = {};
 
     constructor(registerComponents: (registry: ComponentRegistry) => void) {
         let registry = {};
@@ -52,7 +72,7 @@ class World {
             const indexInComponents = this.componentNames.indexOf(component);
 
             if (indexInComponents !== -1) {
-                result[Math.floor(indexInComponents / 52)] |= 1 << (indexInComponents % 52);
+                result[Math.floor(indexInComponents / 32)] |= 1 << (indexInComponents % 32);
             }
         }
 
@@ -86,33 +106,59 @@ class World {
         const bitflags = this.calculateComponentBitflags(Object.keys(components));
         this.gens.setBitflags(openSpot, bitflags);
 
+        // check if this new entity should be tracked in any of the caches
+        for (let queryStr in this.queryCache) {
+            let query = queryStr.split(",").map(x => parseInt(x));
+
+            let matches = true;
+            for (let j = 0; j < this.gens.componentNumsNeeded; j++) {
+                if ((bitflags[j] & query[j]) !== query[j]) {
+                    matches = false;
+                    break;
+                }
+            }
+
+            if (matches) {
+                this.queryCache[queryStr].add(idToCompactId(openSpot.index, openSpot.generation));
+            }
+        }
+
         return openSpot;
     }
 
-    removeEntity(indexAndGen: IndexAndGeneration) {
-        let wasRemoved = this.gens.remove(indexAndGen);
+    removeEntity(id: IndexAndGeneration) {
+        const wasRemoved = this.gens.remove(id);
 
         if (wasRemoved) {
-            const { index } = indexAndGen;
+            const { index, generation } = id;
 
             for (let component in this.world) {
                 this.world[component][index] = null;
+            }
+
+            // remove entity from all caches
+            const toRemove = idToCompactId(index, generation);
+
+            for (let queryKey in this.queryCache) {
+                this.queryCache[queryKey].delete(toRemove);
             }
         }
 
         return wasRemoved;
     }
 
-    *query(bitflags: number[]) {
+    *query(query: number[]) {
+        const componentNumsNeeded = this.gens.componentNumsNeeded;
+
         for (let i = 0; i < this.gens.len(); i++) {
             if (this.gens.isTaken(i)) {
                 // it's taken, so let's check the bitflags
                 let matches = true;
 
-                for (let j = 0; j < this.gens.componentNumsNeeded; j++) {
+                for (let j = 0; j < componentNumsNeeded; j++) {
                     const componentFlag = this.gens.generations[i * this.gens.alignment + 1 + j] as number;
 
-                    if ((componentFlag & bitflags[j]) !== bitflags[j]) {
+                    if ((componentFlag & query[j]) !== query[j]) {
                         matches = false;
                         break;
                     }
@@ -122,6 +168,28 @@ class World {
                     yield i;
                 }
             }
+        }
+    }
+
+    *cachedQuery(bitflags: number[]) {
+        const queryKey = bitflags.join(",");
+
+        if (this.queryCache[queryKey]) {
+            const cache = this.queryCache[queryKey];
+
+            for (let compactId of cache) {
+                yield compactId & INDEX_MASK;
+            }
+        } else {
+            let newCache: Set<number> = new Set();
+
+            for (let index of this.query(bitflags)) {
+                newCache.add(idToCompactId(index, this.gens.generation(index)));
+
+                yield index;
+            }
+
+            this.queryCache[queryKey] = newCache;
         }
     }
 }
