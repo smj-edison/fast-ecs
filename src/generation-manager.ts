@@ -3,6 +3,16 @@ interface IndexAndGeneration {
     generation: number
 }
 
+function slice<T>(arr: T[], start: number, end: number): T[] {
+    let out: T[] = [];
+
+    for (let i = start; i < end; i++) {
+        out.push(arr[i]);
+    }
+
+    return out;
+}
+
 class GenerationManager {
     componentNumsNeeded: number;
     alignment: number;
@@ -12,8 +22,8 @@ class GenerationManager {
 
     constructor(componentCount: number) {
         // 32 bits is maximum binary operator precision
-        this.componentNumsNeeded = Math.ceil(componentCount / 32);
-        this.alignment = Math.max(this.componentNumsNeeded, 2) + 1;
+        this.componentNumsNeeded = math.ceil(componentCount / 32);
+        this.alignment = math.max(this.componentNumsNeeded, 2) + 1;
         this.nextOpen = null;
 
         // [
@@ -41,7 +51,7 @@ class GenerationManager {
     }
 
     len(): number {
-        return Math.floor(this.generations.length / this.alignment);
+        return math.floor(this.generations.length / this.alignment);
     }
 
     getOpen(): IndexAndGeneration {
@@ -71,7 +81,7 @@ class GenerationManager {
             }
 
             return {
-                index: Math.floor(this.generations.length / this.alignment) - 1,
+                index: math.floor(this.generations.length / this.alignment) - 1,
                 generation: 0
             };
         }
@@ -98,7 +108,8 @@ class GenerationManager {
 
         const { index } = id;
 
-        return this.generations.slice(
+        return slice(
+            this.generations,
             index * this.alignment + 1,
             index * this.alignment + 1 + this.componentNumsNeeded
         ) as number[];

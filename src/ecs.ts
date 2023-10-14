@@ -2,7 +2,7 @@ import { GenerationManager, IndexAndGeneration } from "./generation-manager.js";
 
 
 type Registry = {
-    [key: string]: () => any
+    [key: string]: () => object
 };
 
 class ComponentRegistry {
@@ -16,7 +16,7 @@ class ComponentRegistry {
         this.#componentNames = componentNames;
     }
 
-    registerComponent(name: string, initFunc: () => any) {
+    registerComponent(name: string, initFunc: () => object) {
         if (!(name in this.#world)) {
             this.#world[name] = [];
             this.#registry[name] = initFunc;
@@ -45,10 +45,10 @@ function compactIdToId(id: number): IndexAndGeneration {
 class World {
     gens: GenerationManager;
     registry: Registry;
-    world: { [component: string]: any[] };
+    world: { [component: string]: (object | null)[] };
     componentNames: string[] = [];
     queryCache: {
-        [componentBitmap: string]: Set<number>
+        [componentBitmap: string]: { [key: string]: true }
     } = {};
 
     constructor(registerComponents: (registry: ComponentRegistry) => void) {
@@ -83,7 +83,7 @@ class World {
         return this.gens.check(id);
     }
 
-    createEntity(components: { [key: string]: any }) {
+    createEntity(components: { [key: string]: object }) {
         const openSpot = this.gens.getOpen();
 
         for (let componentName in this.world) {
@@ -91,11 +91,7 @@ class World {
                 const defaultValue = this.registry[componentName]();
                 let newComponentInstance;
 
-                if (typeof defaultValue === "object") {
-                    newComponentInstance = Object.assign(defaultValue, components[componentName]);
-                } else {
-                    newComponentInstance = components[componentName];
-                }
+                newComponentInstance = Object.assign(defaultValue, components[componentName]);
 
                 this.world[componentName][openSpot.index] = newComponentInstance;
             } else {
@@ -119,7 +115,7 @@ class World {
             }
 
             if (matches) {
-                this.queryCache[queryStr].add(idToCompactId(openSpot.index, openSpot.generation));
+                this.queryCache[queryStr][idToCompactId(openSpot.index, openSpot.generation)] = true;
             }
         }
 
@@ -140,7 +136,7 @@ class World {
             const toRemove = idToCompactId(index, generation);
 
             for (let queryKey in this.queryCache) {
-                this.queryCache[queryKey].delete(toRemove);
+                delete this.queryCache[queryKey][toRemove];
             }
         }
 
@@ -177,14 +173,14 @@ class World {
         if (this.queryCache[queryKey]) {
             const cache = this.queryCache[queryKey];
 
-            for (let compactId of cache) {
-                yield compactId & INDEX_MASK;
+            for (let compactId of Object.keys(cache)) {
+                yield parseInt(compactId) & INDEX_MASK;
             }
         } else {
-            let newCache: Set<number> = new Set();
+            let newCache: { [key: string]: true } = {};
 
             for (let index of this.query(bitflags)) {
-                newCache.add(idToCompactId(index, this.gens.generation(index)));
+                newCache[idToCompactId(index, this.gens.generation(index))] = true;
 
                 yield index;
             }
