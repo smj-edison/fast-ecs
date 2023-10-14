@@ -1,7 +1,7 @@
 import { World } from "./ecs.js";
 
-const COMPONENT_COUNT = 400;
-const INITIAL_ENTITY_COUNT = 20000;
+const COMPONENT_COUNT = 300;
+const INITIAL_ENTITY_COUNT = 1000;
 const SYSTEM_COUNT = 200;
 
 const world = new World(registry => {
@@ -54,6 +54,18 @@ for (let i = 0; i < INITIAL_ENTITY_COUNT; i++) {
     }
 }
 
+let megaEntity: any = {};
+for (let i = 0; i < COMPONENT_COUNT; i++) {
+    megaEntity["component" + i] = {
+        x: Math.floor(Math.random() * 10 - 5),
+        y: Math.floor(Math.random() * 10 - 5)
+    };
+}
+
+entityTemplates.push(megaEntity);
+
+console.log(`Using ${COMPONENT_COUNT} components`);
+
 // PROFILE INSERTION
 start();
 
@@ -88,8 +100,6 @@ console.log(`Time to reinsert ${INITIAL_ENTITY_COUNT} entities: ${end()}`);
 
 
 // QUERYING
-const half = Math.floor(COMPONENT_COUNT / 2);
-
 // DENSE QUERY WARMUP
 for (let i = 0; i < 1000; i++) {
     const query = world.calculateComponentBitflags(["component1", "component2"]);

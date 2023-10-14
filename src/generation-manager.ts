@@ -36,7 +36,7 @@ class GenerationManager {
         return this.generations[index * this.alignment + 1] !== false;
     }
 
-    #pointerToNext(index: number): number | null {
+    pointerToNext(index: number): number | null {
         return this.generations[index * this.alignment + 2] as (number | null);
     }
 
@@ -51,7 +51,7 @@ class GenerationManager {
                 const index = this.nextOpen;
                 const generation = this.generation(index) as number;
 
-                this.nextOpen = this.#pointerToNext(index);
+                this.nextOpen = this.pointerToNext(index);
 
                 // zero out bitflags
                 for (let i = 1; i < this.alignment; i++) {
