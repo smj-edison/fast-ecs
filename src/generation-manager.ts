@@ -13,6 +13,17 @@ function slice<T>(arr: T[], start: number, end: number): T[] {
     return out;
 }
 
+function join<T>(arr: T[]): string {
+    let out = "";
+
+    for (let i = 0; i < arr.length; i++) {
+        if (i !== 0) out += ",";
+        out += "" + arr[i];
+    }
+
+    return out;
+}
+
 class GenerationManager {
     componentNumsNeeded: number;
     alignment: number;
@@ -145,4 +156,4 @@ class GenerationManager {
     }
 }
 
-export { GenerationManager, IndexAndGeneration };
+export { GenerationManager, IndexAndGeneration, slice, join };

@@ -1,4 +1,4 @@
-import { GenerationManager, IndexAndGeneration } from "./generation-manager.js";
+import { GenerationManager, IndexAndGeneration, join } from "./generation-manager.js";
 
 
 type Registry = {
@@ -168,7 +168,7 @@ class World {
     }
 
     *cachedQuery(bitflags: number[]) {
-        const queryKey = bitflags.join(",");
+        const queryKey = join(bitflags);
 
         if (this.queryCache[queryKey]) {
             const cache = this.queryCache[queryKey];
